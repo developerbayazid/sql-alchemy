@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy import Column, Numeric, Enum as SQLEnum, Integer, BigInteger, String, Date, DateTime, select, Boolean, Float, Text, ForeignKey
+from sqlalchemy import Column, and_, or_, not_, Numeric, Enum as SQLEnum, Integer, BigInteger, String, Date, DateTime, select, Boolean, Float, Text, ForeignKey
 from pydantic import BaseModel
 from datetime import datetime
 from enum import Enum
@@ -288,6 +288,60 @@ async def get_product_by_range():
     
     except Exception as e:
         return {"error": str(e)}
+
+
+
+
+@app.get('/product_and_or_not')
+async def get_product_and_or_not():
+    try:
+        async with db_session() as session:
+            query = select(ProductModel).where(
+                # and_(
+                #     ProductModel.user_id == 5,
+                #     ProductModel.category_id == 5
+                # )
+                # or_(
+                #     ProductModel.user_id == 5,
+                #     ProductModel.category_id == 5
+                # )
+                not_(
+                    and_(
+                        ProductModel.user_id == 5,
+                        ProductModel.category_id == 5
+                    )
+                )
+            )
+            results = await session.execute(query)
+            data = results.scalars().all()
+            return{
+                "message":"success",
+                "data": data
+            }
+    
+    except Exception as e:
+        return {"error": str(e)}
+
+
+
+
+@app.get('/product_null')
+async def get_product_by_null():
+    try:
+        async with db_session() as session:
+            # query = select(ProductModel).where(ProductModel.price.is_(None))
+            query = select(ProductModel).where(ProductModel.price.is_not(None))
+            results = await session.execute(query)
+            data = results.scalars().all()
+            return{
+                "message":"success",
+                "data": data
+            }
+    
+    except Exception as e:
+        return {"error": str(e)}
+
+
 
 
 
