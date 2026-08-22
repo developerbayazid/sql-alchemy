@@ -217,3 +217,41 @@ async def get_all_products():
 
 
 
+@app.get('/product/price/{price}')
+async def get_product_by_price(price: int):
+    try:
+        async with db_session() as session:
+            # query = select(ProductModel).where(ProductModel.price == price)
+            # query = select(ProductModel).where(ProductModel.price > price)
+            query = select(ProductModel).where(ProductModel.price < price)
+            results = await session.execute(query)
+            data = results.scalars().all()
+            return{
+                "message":"success",
+                "data": data
+            }
+    
+    except Exception as e:
+        return {"error": str(e)}
+    
+    
+    
+    
+@app.get('/product/search/{keyword}')
+async def get_product_by_search(keyword: str):
+    try:
+        async with db_session() as session:
+            query = select(ProductModel).where(ProductModel.name.ilike(f"%{keyword}%"))
+            results = await session.execute(query)
+            data = results.scalars().all()
+            return{
+                "message":"success",
+                "data": data
+            }
+    
+    except Exception as e:
+        return {"error": str(e)}
+    
+    
+    
+
