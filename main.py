@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy import Column, Numeric, Enum, Integer, BigInteger, String, Date, DateTime, select, Boolean, Float, Text, ForeignKey
+from sqlalchemy import Column, Numeric, Enum as SQLEnum, Integer, BigInteger, String, Date, DateTime, select, Boolean, Float, Text, ForeignKey
 from pydantic import BaseModel
 from datetime import datetime
+from enum import Enum
+from typing import List
 
 app = FastAPI()
 
@@ -39,7 +41,7 @@ class UserValidator(BaseModel):
     otp:str
 
 
-class UserRole(enum.Enum):
+class UserRole(Enum):
     admin = "admin"
     user = "user"
     manager = "manager"
@@ -56,6 +58,8 @@ class User(DBModel):
     mobile = Column(String)
     password = Column(String)
     otp = Column(String)
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, nullable=False, onupdate=datetime.now)
     
     def full_name(self):
         return f"{self.firstname} {self.lastname}"
@@ -76,7 +80,7 @@ class ItemDB(DBModel):
     balance = Column(Float, default=0.00)
     bio = Column(Text, nullable=True)
     user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
-    user_role = Column(Enum(UserRole), default=UserRole.user)
+    user_role = Column(SQLEnum(UserRole), default=UserRole.user)
     money = Column(Numeric(10, 2), default=0.00)
     
 
@@ -102,14 +106,21 @@ async def user_list():
     
     
 @app.post('/create-user')
-async def user_create():
-    async with db_session() as session:
-        user = User(firstname="demo", lastname="demo", email="demo@live2.com", mobile="02393", password="abc@demo", otp="239")
-        session.add(user)
-        await session.commit()
-        return{
-            "status" : "success",
-            "message" : "user created!"
+async def user_create(data: UserValidator):
+    try:
+        async with db_session() as session:
+            user = User(**data.model_dump())
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+            return{
+                "status": "success",
+                "user_id": user.id
+            }
+        
+    except Exception as e:
+        return {
+            "error": str(e)
         }
 
 
@@ -128,6 +139,33 @@ async def create_user(user: UserValidator):
         return {
             "message" : str(e)
         }
+
+
+
+
+@app.post('/create-bulk-users')
+async def create_bulk_users(data: List[UserValidator]):
+    try:
+        async with db_session() as session:
+            users = [User(**eachUser.model_dump()) for eachUser in data]
+            session.add_all(users)
+            await session.commit()
+            for eachUser in users:
+                await session.refresh(eachUser)
+                
+            return {
+                "status" : "success",
+                "data" : users
+            }
+            
+    except Exception as e:
+        return {"error": str(e)}
+
+
+
+
+
+
 
 
 
