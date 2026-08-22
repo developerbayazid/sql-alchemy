@@ -255,3 +255,39 @@ async def get_product_by_search(keyword: str):
     
     
 
+
+@app.get('/product_in_not_in')
+async def get_product_by_in_not_in():
+    try:
+        async with db_session() as session:
+            # query = select(ProductModel).where(ProductModel.id.in_([1, 2, 3, 4]))
+            query = select(ProductModel).where(ProductModel.id.not_in([1, 2, 3, 4]))
+            results = await session.execute(query)
+            data = results.scalars().all()
+            return{
+                "message":"success",
+                "data": data
+            }
+    
+    except Exception as e:
+        return {"error": str(e)}
+    
+    
+    
+@app.get('/product_in_range')
+async def get_product_by_range():
+    try:
+        async with db_session() as session:
+            query = select(ProductModel).where(ProductModel.price.between(1000, 5000))
+            results = await session.execute(query)
+            data = results.scalars().all()
+            return{
+                "message":"success",
+                "data": data
+            }
+    
+    except Exception as e:
+        return {"error": str(e)}
+
+
+
