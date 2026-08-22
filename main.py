@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy import Column, Integer, String, Date, DateTime, select
+from sqlalchemy import Column, Numeric, Enum, Integer, BigInteger, String, Date, DateTime, select, Boolean, Float, Text, ForeignKey
 from pydantic import BaseModel
+from datetime import datetime
 
 app = FastAPI()
 
@@ -37,7 +38,12 @@ class UserValidator(BaseModel):
     password:str
     otp:str
 
-        
+
+class UserRole(enum.Enum):
+    admin = "admin"
+    user = "user"
+    manager = "manager"
+     
         
 DBModel = declarative_base()
 
@@ -54,6 +60,26 @@ class User(DBModel):
     def full_name(self):
         return f"{self.firstname} {self.lastname}"
                
+
+
+class ItemDB(DBModel):
+    __tablename__ = "items"
+    id = Column(Integer, primary_key=True, index=True)
+    firstname = Column(String(100), nullable=False, default='Bayazid')
+    email = Column(String(50), nullable=False, unique=True, index=True)
+    mobile = Column(String(15), nullable=True, index=True)
+    is_active = Column(Boolean, default=True)
+    password = Column(String(500), nullable=False)
+    otp = Column(String(15), nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    balance = Column(Float, default=0.00)
+    bio = Column(Text, nullable=True)
+    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    user_role = Column(Enum(UserRole), default=UserRole.user)
+    money = Column(Numeric(10, 2), default=0.00)
+    
+
 
 
 @app.get('/get-user')
