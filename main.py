@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy import Column, func, and_, or_, not_, Numeric, Enum as SQLEnum, Integer, BigInteger, String, Date, DateTime, select, Boolean, Float, Text, ForeignKey
+from sqlalchemy import Column, text, func, and_, or_, not_, Numeric, Enum as SQLEnum, Integer, BigInteger, String, Date, DateTime, select, Boolean, Float, Text, ForeignKey
 from pydantic import BaseModel
 from datetime import datetime
 from enum import Enum
@@ -413,7 +413,36 @@ async def product_states():
 
 
 
+@app.get('/raw-products')
+async def raw_products():
+    try:
+        async with db_session() as session:
+            query = text("SELECT * FROM products ORDER BY id DESC")
+            results = await session.execute(query)
+            data = results.mappings().all()
+            return{
+                "message": "success",
+                "data": data
+            }
+    except Exception as e:
+        return {"error" : str(e)}
+
         
+        
+        
+@app.get('/products-offset-limit')
+async def get_products_by_offset_limit():
+    try:
+        async with db_session() as session:
+            results = await session.execute(select(ProductModel).offset(10).limit(10))
+            data = results.scalars().all()
+            return{
+                "message":"success",
+                "data": data
+            }
+    
+    except Exception as e:
+        return {"error": str(e)}       
         
         
         
