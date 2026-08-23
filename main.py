@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy import Column, and_, or_, not_, Numeric, Enum as SQLEnum, Integer, BigInteger, String, Date, DateTime, select, Boolean, Float, Text, ForeignKey
+from sqlalchemy import Column, func, and_, or_, not_, Numeric, Enum as SQLEnum, Integer, BigInteger, String, Date, DateTime, select, Boolean, Float, Text, ForeignKey
 from pydantic import BaseModel
 from datetime import datetime
 from enum import Enum
@@ -381,3 +381,39 @@ async def date_filter(date: str):
             "message" : "fail",
             "error" : str(e)
         }
+        
+        
+        
+@app.get('/product-state')
+async def product_states():
+    try:
+        async with db_session() as session:
+            query = select(
+                func.count(ProductModel.id),
+                func.avg(ProductModel.price),
+                func.max(ProductModel.price),
+                func.min(ProductModel.price),
+                func.sum(ProductModel.price),
+            )
+            results = await session.execute(query)
+            data = results.one()
+            return{
+                "message": "success",
+                "count" : data[0],
+                "avg" : data[1],
+                "max" : data[2],
+                "min" : data[3],
+                "sum" : data[4],
+            }
+    except Exception as e:
+        return{
+            "message" : "fail",
+            "error" : str(e)
+        }
+
+
+
+        
+        
+        
+        
