@@ -343,5 +343,41 @@ async def get_product_by_null():
 
 
 
+@app.get('/string-operation/{keyword}')
+async def string_operation(keyword: str):
+    try:
+        async with db_session() as session:
+            # query = select(ProductModel).where(ProductModel.name.startswith(f"{keyword}"))
+            # query = select(ProductModel).where(ProductModel.name.endswith(f"{keyword}"))
+            query = select(ProductModel).where(ProductModel.name.contains(f"{keyword}"))
+            results = await session.execute(query)
+            data = results.scalars().all()
+            return{
+                "message": "success",
+                "data": data
+            }
+    except Exception as e:
+        return {
+            "error" : str(e)
+        }
 
 
+
+
+@app.get('/date-filter/{date}')
+async def date_filter(date: str):
+    try:
+        async with db_session() as session:
+            date_obj = datetime.strptime(date, "%Y-%m-%d")
+            query = select(ProductModel).where(ProductModel.created_at > date_obj)
+            results = await session.execute(query)
+            data = results.scalars().all()
+            return{
+                "message": "success",
+                "data" : data
+            }
+    except Exception as e:
+        return{
+            "message" : "fail",
+            "error" : str(e)
+        }
