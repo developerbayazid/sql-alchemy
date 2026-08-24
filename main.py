@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 from sqlalchemy import Column, delete, update, text, func, and_, or_, not_, Numeric, Enum as SQLEnum, Integer, BigInteger, String, Date, DateTime, select, Boolean, Float, Text, ForeignKey
 from pydantic import BaseModel
 from datetime import datetime
@@ -51,18 +51,50 @@ DBModel = declarative_base()
 
 class User(DBModel):
     __tablename__ = 'users'
-    id = Column(Integer, primary_key=True)
-    firstname = Column(String)
-    lastname = Column(String)
-    email = Column(String)
-    mobile = Column(String)
-    password = Column(String)
-    otp = Column(String)
+    id = Column(BigInteger, primary_key=True, index=True)
+    firstname = Column(String(50), nullable=False)
+    lastname = Column(String(50), nullable=False)
+    email = Column(String(50), nullable=False, index=True, unique=True)
+    mobile = Column(String(20), nullable=False, index=True)
+    password = Column(String(500), nullable=False)
+    otp = Column(String(10), nullable=False)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     updated_at = Column(DateTime, default=datetime.now, nullable=False, onupdate=datetime.now)
     
     def full_name(self):
         return f"{self.firstname} {self.lastname}"
+
+
+
+class CategoryModel(DBModel):
+    __tablename__ = "categories"
+    id = Column(BigInteger, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, nullable=False, onupdate=datetime.now)
+    
+    # Relationship
+    products = relationship("ProductModel", back_populates="categories")
+
+    
+
+class ProductModel(DBModel):
+    __tablename__ = "products"
+    id = Column(BigInteger, primary_key=True, index=True)
+    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False, index=True)
+    category_id = Column(BigInteger, ForeignKey("categories.id"), nullable=False, index=True)
+    name = Column(String(100), nullable=False, index=True)
+    price = Column(Numeric(10, 2), nullable=False)
+    unit = Column(String(50), nullable=False)
+    img_url = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, nullable=False, onupdate=datetime.now)
+    
+    # Relationship
+    categories = relationship("CategoryModel", back_populates="products")
+    
+    
                
 
 
@@ -163,19 +195,6 @@ async def create_bulk_users(data: List[UserValidator]):
 
 
 
-
-
-class ProductModel(DBModel):
-    __tablename__ = "products"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False, index=True)
-    category_id = Column(BigInteger, ForeignKey("categories.id"), nullable=False, index=True)
-    name = Column(String(100), nullable=False, index=True)
-    price = Column(Numeric(10, 2), nullable=False)
-    unit = Column(String(50), nullable=False)
-    img_url = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=datetime.now, nullable=False)
-    updated_at = Column(DateTime, default=datetime.now, nullable=False, onupdate=datetime.now)
 
 
 
@@ -454,9 +473,9 @@ class ProductUpdate(BaseModel):
     unit: str | None = None
     img_url: str | None = None
     
-class CategoryModel(DBModel):
-    __tablename__ = "categories"
-    id = Column(Integer, primary_key=True)
+# class CategoryModel(DBModel):
+#     __tablename__ = "categories"
+#     id = Column(Integer, primary_key=True)
         
         
         
@@ -542,3 +561,48 @@ async def product_delete(data: ProductBulk):
             }
     except Exception as e:
         return{"error": str(e)}
+    
+    
+    
+    
+@app.get('/inner-join')
+async def product_category_inner_join():
+    try:
+        async with db_session() as session:
+            results = await session.execute(
+                select(ProductModel, CategoryModel)
+                .join(ProductModel.categories)
+            )
+            rows = results.all()
+            return[
+                {
+                    "product_name" : p.name,
+                    "category_name" : c.name
+                }
+                for p, c in rows
+            ]
+            
+    except Exception as e:
+        return {"message":"fail", "error":str(e)}
+    
+    
+
+@app.get('/inner-join-reverse')
+async def product_category_inner_join_reverse():
+    try:
+        async with db_session() as session:
+            results = await session.execute(
+                select(CategoryModel, ProductModel)
+                .join(CategoryModel.products)
+            )
+            rows = results.all()
+            return[
+                {
+                    "category_name" : c.name,
+                    "product_name" : p.name
+                }
+                for c, p in rows
+            ]
+            
+    except Exception as e:
+        return {"message":"fail", "error":str(e)}
