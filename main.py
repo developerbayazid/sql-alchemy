@@ -606,3 +606,59 @@ async def product_category_inner_join_reverse():
             
     except Exception as e:
         return {"message":"fail", "error":str(e)}
+    
+    
+    
+@app.get('/outer-join')
+async def product_category_outer_join():
+    try:
+        async with db_session() as session:
+            results = await session.execute(
+                select(ProductModel, CategoryModel)
+                .outerjoin(ProductModel.categories)
+            )
+            rows = results.all()
+            return[
+                {
+                    "product": {
+                        "name" : p.name,
+                        "price" : p.price,
+                        "unit" : p.unit
+                    },
+                    "category": {
+                        "name" : c.name
+                    } if c else None
+                }
+                for p, c in rows
+            ]
+            
+    except Exception as e:
+        return {"message":"fail", "error":str(e)}
+    
+    
+    
+@app.get('/outer-join-reverse')
+async def product_category_outer_join_reverse():
+    try:
+        async with db_session() as session:
+            results = await session.execute(
+                select(CategoryModel, ProductModel)
+                .outerjoin(CategoryModel.products)
+            )
+            rows = results.all()
+            return[
+                {
+                    "category": {
+                        "name": c.name
+                    },
+                    "product": {
+                        "name": p.name,
+                        "price": p.price,
+                        "unit" : p.unit
+                    } if p else None
+                }
+                for c, p in rows
+            ]
+            
+    except Exception as e:
+        return {"message":"fail", "error":str(e)}
