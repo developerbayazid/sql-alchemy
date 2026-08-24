@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy import Column, text, func, and_, or_, not_, Numeric, Enum as SQLEnum, Integer, BigInteger, String, Date, DateTime, select, Boolean, Float, Text, ForeignKey
+from sqlalchemy import Column, delete, update, text, func, and_, or_, not_, Numeric, Enum as SQLEnum, Integer, BigInteger, String, Date, DateTime, select, Boolean, Float, Text, ForeignKey
 from pydantic import BaseModel
 from datetime import datetime
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 app = FastAPI()
 
@@ -442,7 +442,103 @@ async def get_products_by_offset_limit():
             }
     
     except Exception as e:
-        return {"error": str(e)}       
+        return {"error": str(e)}
+ 
+ 
+    
+class ProductUpdate(BaseModel):
+    id: int | None = None
+    category_id: int | None = None
+    name: str | None = None
+    price: float | None = None
+    unit: str | None = None
+    img_url: str | None = None
+    
+class CategoryModel(DBModel):
+    __tablename__ = "categories"
+    id = Column(Integer, primary_key=True)
         
         
         
+@app.patch("/product/edit/{id}")
+async def product_edit(id: int, product_data: ProductUpdate):
+    try:
+        async with db_session() as session:
+            update_data = product_data.model_dump(exclude_unset=True)
+    
+            await session.execute(
+                update(ProductModel)
+                .where(ProductModel.id == id)
+                .values(**update_data)
+            )
+            await session.commit()
+            
+            return{
+                "message" : "Product updated successfully",
+            }
+    except Exception as e:
+        return{"error": str(e)}
+    
+    
+    
+@app.patch("/all-products/edit")
+async def product_edit(product_data: List[ProductUpdate]):
+    try:
+        async with db_session() as session:
+            
+            update_data = [
+                product.model_dump(exclude_unset=True) for product in product_data
+            ]
+    
+            await session.execute(
+                update(ProductModel),
+                update_data
+            )
+            await session.commit()
+            
+            return{
+                "message" : "Product updated successfully",
+            }
+    except Exception as e:
+        return{"error": str(e)}
+        
+        
+@app.delete('/product/delete/{id}')
+async def product_delete(id: int):
+    try:
+        async with db_session() as session:
+    
+            await session.execute(
+                delete(ProductModel)
+                .where(ProductModel.id == id)
+            )
+            await session.commit()
+            
+            return{
+                "message" : "Product deleted successfully",
+            }
+    except Exception as e:
+        return{"error": str(e)}
+    
+    
+class ProductBulk(BaseModel):
+    ids: List[int]
+    
+    
+    
+@app.delete('/product/delete')
+async def product_delete(data: ProductBulk):
+    try:
+        async with db_session() as session:
+    
+            await session.execute(
+                delete(ProductModel)
+                .where(ProductModel.id.in_(data.ids))
+            )
+            await session.commit()
+            
+            return{
+                "message" : "Product deleted successfully",
+            }
+    except Exception as e:
+        return{"error": str(e)}
